@@ -1,0 +1,19 @@
+// Documentation only. The applied model lives in /prisma/schema.prisma.
+model Lead {
+  id          String     @id @default(cuid())
+  tenantId    String
+  firstName   String
+  lastName    String
+  companyName String?
+  email       String?
+  phone       String?
+  status      LeadStatus @default(NEW)
+  notes       String?
+  customerId  String?
+  contactId   String?
+  convertedAt DateTime?
+  createdById String?
+  deletedAt   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}

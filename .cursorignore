@@ -1,0 +1,30 @@
+﻿# Heavy / generated — keep Cursor index + context small
+node_modules/
+.next/
+out/
+build/
+coverage/
+.vercel/
+
+
+# AI agent skill packs (reinstallable; inflate context hard)
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
+**/SKILL.md
+**/.agents/skills/**
+**/.claude/skills/**
+**/.windsurf/skills/**
+
+# Generated Prisma client + TS build noise
+src/generated/
+**/generated/prisma/
+*.tsbuildinfo
+
+# Secrets / local env
+.env
+.env.*
+
+# Lockfile bloat in chat (rarely useful to read whole)
+package-lock.json

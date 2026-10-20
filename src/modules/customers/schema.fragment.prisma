@@ -1,0 +1,45 @@
+// Documentation only. The root prisma/schema.prisma is authoritative.
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Customer {
+  id          String         @id @default(cuid())
+  tenantId    String
+  name        String
+  email       String?
+  phone       String?
+  website     String?
+  address     String?
+  status      CustomerStatus @default(ACTIVE)
+  notes       String?
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([id, tenantId])
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  tenantId    String
+  customerId  String
+  firstName   String
+  lastName    String
+  jobTitle    String?
+  email       String?
+  phone       String?
+  notes       String?
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Root schema uses (customerId, tenantId) as a composite foreign key.
+  @@unique([id, tenantId])
+  @@unique([id, customerId, tenantId])
+}
