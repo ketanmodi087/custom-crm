@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  LOST
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model Tenant {
+  id        String       @id @default(cuid())
+  name      String
+  slug      String       @unique
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  users       User[]
+  roles       Role[]
+  assignments UserRoleAssignment[]
+  leads       Lead[]
+  customers   Customer[]
+  contacts    Contact[]
+  auditLogs   AuditLog[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  email        String   @unique
+  passwordHash String
+  name         String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignments      UserRoleAssignment[]
+  createdLeads     Lead[]               @relation("LeadCreatedBy")
+  createdCustomers Customer[]           @relation("CustomerCreatedBy")
+  updatedCustomers Customer[]           @relation("CustomerUpdatedBy")
+  createdContacts  Contact[]            @relation("ContactCreatedBy")
+  updatedContacts  Contact[]            @relation("ContactUpdatedBy")
+  auditLogs        AuditLog[]
+
+  @@index([tenantId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  assignments UserRoleAssignment[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  description String?
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([tenantId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, token])
+  @@index([expiresAt])
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  tenantId    String
+  firstName   String
+  lastName    String
+  companyName String?
+  email       String?
+  phone       String?
+  status      LeadStatus @default(NEW)
+  notes       String?
+  customerId  String?
+  contactId   String?
+  convertedAt DateTime?
+  createdById String?
+  deletedAt   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation("LeadCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  customer  Customer? @relation(fields: [customerId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  contact   Contact?  @relation(fields: [contactId, customerId, tenantId], references: [id, customerId, tenantId], onDelete: Restrict)
+
+  @@index([tenantId, status])
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, customerId])
+  @@index([tenantId, contactId])
+}
+
+model Customer {
+  id          String         @id @default(cuid())
+  tenantId    String
+  name        String
+  email       String?
+  phone       String?
+  website     String?
+  address     String?
+  status      CustomerStatus @default(ACTIVE)
+  notes       String?
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("CustomerUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  contacts  Contact[]
+  leads     Lead[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, deletedAt])
+}
+
+model Contact {
+  id          String    @id @default(cuid())
+  tenantId    String
+  customerId  String
+  firstName   String
+  lastName    String
+  jobTitle    String?
+  email       String?
+  phone       String?
+  notes       String?
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer  Customer @relation(fields: [customerId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  createdBy User?    @relation("ContactCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?    @relation("ContactUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  leads     Lead[]
+
+  @@unique([id, tenantId])
+  @@unique([id, customerId, tenantId])
+  @@index([tenantId, customerId, deletedAt])
+  @@index([tenantId, email])
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  tenantId   String
+  entityType String
+  entityId   String
+  action     AuditAction
+  actorId    String?
+  changes    Json        @default("{}")
+  metadata   Json        @default("{}")
+  createdAt  DateTime    @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, entityType, entityId, createdAt])
+}
